@@ -1,4 +1,4 @@
-name = "live-events"
+name = "bdtoffeelive"
 main = "src/index.js"
 compatibility_date = "2026-05-08"
 
