@@ -10,7 +10,7 @@ export default {
     }
 
     const SOURCE =
-      "https://raw.githubusercontent.com/srhady/crichd-speical-live-event/main/playlist.m3u";
+      "https://cdn-toffee-playlist.pages.dev/ott_navigator.m3u";
 
     try {
 
