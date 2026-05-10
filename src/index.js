@@ -3,6 +3,19 @@ export default {
 
     const url = new URL(request.url);
 
+    // OPEN ROOT
+    if (url.pathname === "/") {
+      return new Response(
+        "Use /playlist.m3u",
+        {
+          headers: {
+            "content-type": "text/plain"
+          }
+        }
+      );
+    }
+
+    // PLAYLIST ONLY
     if (url.pathname !== "/playlist.m3u") {
       return new Response("Not Found", {
         status: 404
@@ -17,9 +30,12 @@ export default {
       const response = await fetch(SOURCE);
 
       if (!response.ok) {
-        return new Response("Source fetch failed", {
-          status: 502
-        });
+        return new Response(
+          "Source fetch failed",
+          {
+            status: 502
+          }
+        );
       }
 
       const text = await response.text();
@@ -32,13 +48,16 @@ export default {
 
       let total = 0;
 
-      const now = new Date().toLocaleString("en-BD", {
-        timeZone: "Asia/Dhaka",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true
-      });
+      const now = new Date().toLocaleString(
+        "en-BD",
+        {
+          timeZone: "Asia/Dhaka",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true
+        }
+      );
 
       output.push("#EXTM3U");
       output.push(`#LAST-UPDATED: ${now}`);
@@ -54,7 +73,7 @@ export default {
 
         const lower = line.toLowerCase();
 
-        // ONLY MATCHES WITH VS
+        // ONLY VS MATCHES
         const isVsMatch =
           lower.includes(" vs ") ||
           lower.includes("vs.");
@@ -107,8 +126,14 @@ export default {
         output.join("\n"),
         {
           headers: {
+            // FORCE TEXT OUTPUT
             "content-type":
-              "application/x-mpegURL; charset=utf-8",
+              "text/plain; charset=utf-8",
+
+            // STOP INLINE VIDEO PLAY
+            "Content-Disposition":
+              'attachment; filename="playlist.m3u"',
+
             "Cache-Control": "no-store",
             "Access-Control-Allow-Origin": "*"
           }
