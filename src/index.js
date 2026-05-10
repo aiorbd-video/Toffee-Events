@@ -3,20 +3,7 @@ export default {
 
     const url = new URL(request.url);
 
-    // OPEN ROOT
-    if (url.pathname === "/") {
-      return new Response(
-        "Use /playlist.m3u",
-        {
-          headers: {
-            "content-type": "text/plain"
-          }
-        }
-      );
-    }
-
-    // PLAYLIST ONLY
-    if (url.pathname !== "/playlist.m3u") {
+    if (url.pathname !== "/playlist.json") {
       return new Response("Not Found", {
         status: 404
       });
@@ -31,9 +18,14 @@ export default {
 
       if (!response.ok) {
         return new Response(
-          "Source fetch failed",
+          JSON.stringify({
+            error: "Source fetch failed"
+          }),
           {
-            status: 502
+            status: 502,
+            headers: {
+              "content-type": "application/json"
+            }
           }
         );
       }
@@ -42,13 +34,11 @@ export default {
 
       const lines = text.split("\n");
 
-      const output = [];
+      const channels = [];
 
       const seen = new Set();
 
-      let total = 0;
-
-      const now = new Date().toLocaleString(
+      const updated = new Date().toLocaleString(
         "en-BD",
         {
           timeZone: "Asia/Dhaka",
@@ -58,10 +48,6 @@ export default {
           hour12: true
         }
       );
-
-      output.push("#EXTM3U");
-      output.push(`#LAST-UPDATED: ${now}`);
-      output.push("");
 
       for (let i = 0; i < lines.length; i++) {
 
@@ -82,7 +68,12 @@ export default {
           continue;
         }
 
-        output.push(line);
+        // CHANNEL NAME
+        const name =
+          line.split(",").pop()?.trim() ||
+          "Unknown";
+
+        let stream = "";
 
         let j = i + 1;
 
@@ -91,49 +82,50 @@ export default {
           !lines[j].startsWith("#EXTINF")
         ) {
 
-          const current = lines[j];
+          const current = lines[j].trim();
 
-          // REMOVE DUPLICATE LINKS
-          if (current.startsWith("http")) {
-
-            if (seen.has(current)) {
-              j++;
-              continue;
-            }
-
-            seen.add(current);
+          if (
+            current.startsWith("http")
+          ) {
+            stream = current;
+            break;
           }
-
-          output.push(current);
 
           j++;
         }
 
-        output.push("");
+        if (!stream) {
+          continue;
+        }
 
-        total++;
+        if (seen.has(stream)) {
+          continue;
+        }
+
+        seen.add(stream);
+
+        channels.push({
+          name,
+          stream
+        });
 
         i = j - 1;
       }
 
-      output.splice(
-        1,
-        0,
-        `#TOTAL-VS-MATCHES: ${total}`
-      );
-
       return new Response(
-        output.join("\n"),
+        JSON.stringify(
+          {
+            updated,
+            total: channels.length,
+            channels
+          },
+          null,
+          2
+        ),
         {
           headers: {
-            // FORCE TEXT OUTPUT
             "content-type":
-              "text/plain; charset=utf-8",
-
-            // STOP INLINE VIDEO PLAY
-            "Content-Disposition":
-              'attachment; filename="playlist.m3u"',
-
+              "application/json; charset=utf-8",
             "Cache-Control": "no-store",
             "Access-Control-Allow-Origin": "*"
           }
@@ -143,9 +135,15 @@ export default {
     } catch (err) {
 
       return new Response(
-        "Error: " + err.message,
+        JSON.stringify({
+          error: err.message
+        }),
         {
-          status: 500
+          status: 500,
+          headers: {
+            "content-type":
+              "application/json"
+          }
         }
       );
 
