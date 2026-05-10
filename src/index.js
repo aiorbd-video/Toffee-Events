@@ -54,11 +54,26 @@ export default {
 
         const lower = line.toLowerCase();
 
-        // ONLY LIVE CATEGORY
-        const isLiveCategory =
-          lower.includes('group-title="live');
+        // ONLY LIVE SPORTS & MATCHES
+        const isSportsLive =
+          lower.includes(" vs ") ||
+          lower.includes("vs.") ||
+          lower.includes("live") ||
+          lower.includes("ipl") ||
+          lower.includes("bpl") ||
+          lower.includes("psl") ||
+          lower.includes("cpl") ||
+          lower.includes("t20") ||
+          lower.includes("odi") ||
+          lower.includes("test") ||
+          lower.includes("football") ||
+          lower.includes("uefa") ||
+          lower.includes("epl") ||
+          lower.includes("laliga") ||
+          lower.includes("serie a") ||
+          lower.includes("bundesliga");
 
-        if (!isLiveCategory) {
+        if (!isSportsLive) {
           continue;
         }
 
@@ -99,7 +114,7 @@ export default {
       output.splice(
         1,
         0,
-        `#TOTAL-LIVE-CHANNELS: ${total}`
+        `#TOTAL-LIVE-SPORTS: ${total}`
       );
 
       return new Response(
