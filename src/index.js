@@ -3,7 +3,11 @@ export default {
 
     const url = new URL(request.url);
 
-    if (url.pathname !== "/playlist.json") {
+    // ROOT + M3U
+    if (
+      url.pathname !== "/" &&
+      url.pathname !== "/playlist.m3u"
+    ) {
       return new Response("Not Found", {
         status: 404
       });
@@ -18,14 +22,9 @@ export default {
 
       if (!response.ok) {
         return new Response(
-          JSON.stringify({
-            error: "Source fetch failed"
-          }),
+          "Source fetch failed",
           {
-            status: 502,
-            headers: {
-              "content-type": "application/json"
-            }
+            status: 502
           }
         );
       }
@@ -34,11 +33,13 @@ export default {
 
       const lines = text.split("\n");
 
-      const channels = [];
+      const output = [];
 
       const seen = new Set();
 
-      const updated = new Date().toLocaleString(
+      let total = 0;
+
+      const now = new Date().toLocaleString(
         "en-BD",
         {
           timeZone: "Asia/Dhaka",
@@ -48,6 +49,10 @@ export default {
           hour12: true
         }
       );
+
+      output.push("#EXTM3U");
+      output.push(`#LAST-UPDATED: ${now}`);
+      output.push("");
 
       for (let i = 0; i < lines.length; i++) {
 
@@ -68,12 +73,7 @@ export default {
           continue;
         }
 
-        // CHANNEL NAME
-        const name =
-          line.split(",").pop()?.trim() ||
-          "Unknown";
-
-        let stream = "";
+        output.push(line);
 
         let j = i + 1;
 
@@ -82,50 +82,43 @@ export default {
           !lines[j].startsWith("#EXTINF")
         ) {
 
-          const current = lines[j].trim();
+          const current = lines[j];
 
-          if (
-            current.startsWith("http")
-          ) {
-            stream = current;
-            break;
+          // REMOVE DUPLICATE LINKS
+          if (current.startsWith("http")) {
+
+            if (seen.has(current)) {
+              j++;
+              continue;
+            }
+
+            seen.add(current);
           }
+
+          output.push(current);
 
           j++;
         }
 
-        if (!stream) {
-          continue;
-        }
+        output.push("");
 
-        if (seen.has(stream)) {
-          continue;
-        }
-
-        seen.add(stream);
-
-        channels.push({
-          name,
-          stream
-        });
+        total++;
 
         i = j - 1;
       }
 
+      output.splice(
+        1,
+        0,
+        `#TOTAL-VS-MATCHES: ${total}`
+      );
+
       return new Response(
-        JSON.stringify(
-          {
-            updated,
-            total: channels.length,
-            channels
-          },
-          null,
-          2
-        ),
+        output.join("\n"),
         {
           headers: {
             "content-type":
-              "application/json; charset=utf-8",
+              "application/x-mpegURL; charset=utf-8",
             "Cache-Control": "no-store",
             "Access-Control-Allow-Origin": "*"
           }
@@ -135,15 +128,9 @@ export default {
     } catch (err) {
 
       return new Response(
-        JSON.stringify({
-          error: err.message
-        }),
+        "Error: " + err.message,
         {
-          status: 500,
-          headers: {
-            "content-type":
-              "application/json"
-          }
+          status: 500
         }
       );
 
